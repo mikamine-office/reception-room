@@ -606,7 +606,7 @@
                 } else {
                     try {
                         // 🌟ローカルストレージではなく、Firestoreの'users'コレクションから直接読み込むように変更！
-                        const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid);
+                        const userDocRef = doc(db, 'common_users', user.uid);
                         const userDocSnap = await getDoc(userDocRef);
                         
                         if (userDocSnap.exists()) {
@@ -713,7 +713,7 @@
                             user = userCredential.user;
                             
                             // 2. ユーザー情報をFirestoreに保存（ログイン監視 handleUserChange が読み込める正しいパス！）
-                            const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid);
+                            const userDocRef = doc(db, 'common_users', user.uid);
                             await setDoc(userDocRef, {
                                 dept: dept,
                                 name: name,
@@ -823,7 +823,7 @@
                     handleUserChange(currentUser);
                 } else {
                     // Firestoreのユーザー情報を直接更新
-                    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
+                     const userDocRef = doc(db, 'common_users', currentUser.uid);
                     await setDoc(userDocRef, {
                         dept: newDept,
                         name: newName,
