@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>応接室予約システム</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <div id="configPanel" class="max-w-6xl mx-auto px-4 pt-4 hidden">
+        </div>
+
+    <script type="module">
+        // 1. インターネットからFirebaseの主要機能を読み込む
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // ==========================================
+        // 🌟 ここに追加：右クリック・F12・ソース表示を禁止する処理
+        // ==========================================
+        // 画面全体の右クリックを禁止する
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // 特定のキー操作（F12、ソース表示など）をピンポイントで潰す
+        document.addEventListener('keydown', function(e) {
+            // F12キーを禁止
+            if (e.key === 'F12') {
+                e.preventDefault();
+            }
+            // Ctrl + Shift + I (開発者ツール) を禁止
+            if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                e.preventDefault();
+            }
+            // Ctrl + U (ソースコード表示) を禁止
+            if (e.ctrlKey && e.key === 'u') {
+                e.preventDefault();
+            }
+        }); // 
+
+        // ==========================================
+        // 📅 【土日解放＆完全同期版】カレンダー起動コード
+        // ==========================================
+        
+        const flatpickrConfig = {
+            locale: "ja",
+            dateFormat: "Y-m-d",
+            minDate: "today",
+            maxDate: new Date().fp_incr(30),
+            // 💡 「disable: [...]」の土日ロックの記述を完全に削除しました！これで土日も選べます。
+            onChange: function(selectedDates, dateStr) {
+                if (selectedDates.length > 0) {
+                    const targetDate = new Date(selectedDates[0]);
+
+                    // 1. システムの基準日付を更新
+                    if (typeof window.forceUpdateDate === 'function') {
+                        window.forceUpdateDate(targetDate);
+                    }
+
+                    // 2. 予約フォーム内の「利用希望日」も同時に同期
+                    const formDateInput = document.getElementById("reservationDate");
+                    if (formDateInput && formDateInput._flatpickr) {
+                        formDateInput._flatpickr.setDate(targetDate, false);
+                    }
+                }
+            }
+        };
+
+        // ① ヘッダーの中央の日付（span）にカレンダーを適用
+        flatpickr("#currentDateDisplay", flatpickrConfig);
+
+        // ② 予約フォーム内の「利用希望日」入力欄にカレンダーを適用
+        flatpickr("#reservationDate", flatpickrConfig);
+        // ==========================================
+        // ==========================================
+        
+        // ==========================================
+        // 🌟 開発者向け【本番用】各種設定エリア 🌟
+        // ==========================================
+        
+        // 新しく取得した4つ目のアカウントの接続情報をここに上書き
+        window. PRODUCTION_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyAL9f7KI0DfiOo0xqGGdAMKWFCI82k31N8",
+            authDomain: "reserved-room-d300a.firebaseapp.com",
+            projectId: "reserved-room-d300a",
+            storageBucket: "reserved-room-d300a.firebasestorage.app",
+            messagingSenderId: "821240889276",
+            appId: "1:821240889276:web:00fbaa6fcdd955badb75b9"
+        };
+
+        // 2. 許可する会社のメールアドレスドメイン
+        window. ALLOWED_DOMAIN = "seiwa.ac.jp"; // 会社のメールドメイン に書き換え
+        // ★ここを配列に変更（4人までならカンマ区切りで追加）
+        window. ADMIN_EMAILS = [
+           "yasumasa.terano@seiwa.ac.jp",
+           "satou.masanori@seiwa.ac.jp",
+           "usui.naoko@seiwa.ac.jp",
+           "mori.takeru@seiwa.ac.jp"
+        ];
+// 「const」を消して、直接「window.」の箱にしている
+         window.firebaseApp = initializeApp(window.PRODUCTION_FIREBASE_CONFIG);
+         window.auth = getAuth(window.firebaseApp);
+         window.db = getFirestore(window.firebaseApp);
+         
+         // 👇 ここから追加：パスワード再設定ボタンが押された時の処理
+        window.handlePasswordReset = async function() {
+            const email = prompt("登録されているメールアドレスを入力してください：");
+            if (!email) return; // キャンセルされたら何もしない
+
+            // 会社のドメインチェック（@company.co.jp など以外は弾く）
+            if (window.ALLOWED_DOMAIN && !email.endsWith("@" + window.ALLOWED_DOMAIN)) {
+                alert(`このシステムは「@${window.ALLOWED_DOMAIN}」のメールアドレスのみ利用可能です。`);
+                return;
+            }
+
+            try {
+                // インターネット経由でFirebaseの認証部品からメール送信機能を読み込む
+                const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+                
+                // パスワード再設定メールを送信！
+                await sendPasswordResetEmail(window.auth, email);
+                alert("パスワード再設定メールを送信しました！メールボックスをご確認ください。\n\n迷惑メールボックスに届いている可能性があります。");
+            } catch (error) {
+                console.error("エラー詳細:", error);
+                if (error.code === 'auth/user-not-found') {
+                    alert("このメールアドレスは登録されていません。");
+                } else {
+                    alert("メール送信に失敗しました。アドレスに間違いがないかご確認ください。");
+                }
+            }
+        };
+        // 👆 ここまでがパスワード再設定の処理
+
+
+        // =======================================================
+        // 🌟 ログイン時のメール確認チェック機能だけを残す
+        // =======================================================
+        window.checkEmailVerificationOnLogin = function(user) {
+            if (!user.emailVerified) {
+                alert("まだメールの確認が完了していません！\n届いたメールのリンクをクリックしてアカウントを有効化してください。");
+                import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js").then(({ signOut }) => {
+                    signOut(window.auth);
+                });
+                return false;
+            }
+            return true;
+        };
+        // =======================================================
+    </script>
+
+    <!-- 🛠️ 設定パネル (トグル式) -->
+    <div id="configPanel" class="max-w-6xl mx-auto px-4 pt-4 hidden">
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+                <i data-lucide="settings" class="w-4 h-4 text-blue-500"></i> Firebase 接続設定 (開発用トグルパネル)
+            </h3>
+            <p class="text-xs text-slate-500 mb-4">
+                プログラムコードを書き換えずに、ブラウザ上で個別に一時的な接続情報を適用したい場合は、ここにFirebase設定コード（JSON）を貼り付けてください。
+            </p>
+            <textarea id="configInput" class="w-full h-32 p-3 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}'></textarea>
+            <div class="flex justify-between items-center mt-3">
+                <button onclick="clearCustomConfig()" class="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition font-medium">設定をクリアして規定モード（デモ/コード設定）に戻す</button>
+                <button onclick="saveCustomConfig()" class="px-4 py-2 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition shadow-sm">設定を保存して再起動</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- メインコンテナ -->
+    <div class="max-w-6xl mx-auto px-4 py-6">
+        
+        <!-- ヘッダー -->
+        <header class="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-blue-500 text-white rounded-xl">
+                    <i data-lucide="calendar-range" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900">応接室予約システム</h1>
+                    <div class="flex items-center gap-2 mt-0.5 select-none">
+                        <p id="systemSubtitle" class="text-xs text-slate-500">読み込み中...</p>
+                        <span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Ver: 2026_06_24_01</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 flex-wrap">
+                <!-- 日付切り替えコントロール -->
+                <div id="dateController" class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl">
+                    <button id="prevDateBtn" onclick="changeDate(-1)" class="p-2 hover:bg-white rounded-lg transition text-slate-600 hover:text-slate-900">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                    </button>
+                    
+                    <span id="currentDateDisplay" class="flatpickr-date font-semibold px-4 text-slate-700 select-none cursor-pointer hover:bg-white/50 rounded-lg py-1 transition">2026年06月23日 (火)</span>
+                    
+                    <button onclick="changeDate(1)" class="p-2 hover:bg-white rounded-lg transition text-slate-600 hover:text-slate-900">
+                        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- 接続設定切り替えボタン -->
+                <button onclick="toggleConfigPanel()" class="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    <span>接続設定</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 🔓 未ログイン時の表示：認証カード（登録/ログイン） -->
+        <div id="authSection" class="max-w-md mx-auto my-12 bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
+            <!-- 動作モードステータスバナー -->
+            <div id="statusBanner" class="p-3 text-center text-xs font-semibold border-b flex items-center justify-center gap-2">
+                <span class="w-2 h-2 rounded-full animate-pulse"></span>
+                <span id="statusBannerText">ステータス確認中...</span>
+            </div>
+
+            <div class="p-6 bg-slate-50/50 border-b border-slate-100 text-center">
+                <h2 id="authTitle" class="text-lg font-bold text-slate-900">学内アカウントでサインイン</h2>
+                <p class="text-xs text-slate-500 mt-1">許可されたドメインのメールアドレスのみ利用できます</p>
+                <!-- 許可ドメイン設定 -->
+                <div class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                    <span>許可ドメイン: <strong id="allowedDomainLabel">@your-company.com</strong></span>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <!-- エラーメッセージ表示エリア -->
+                <div id="authErrorMsg" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-medium animate-pulse"></div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">メールアドレス</label>
+                    <input type="email" id="authEmail" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="user@your-company.com">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">このシステムのパスワード（６文字以上）</label>
+                    <input type="password" id="authPassword" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="••••••••">
+                    <!-- パスワードを忘れた場合のリンク -->
+                    <div class="text-right mt-2">
+                        <button type="button" onclick="handlePasswordReset()" class="text-xs text-blue-600 hover:underline">
+                            パスワードをお忘れの方はこちら
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 登録時のみ表示するプロフィール入力 -->
+                <div id="registerFields" class="hidden space-y-4 pt-2 border-t border-slate-100 animate-fadeIn">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">所属部署</label>
+                        <input type="text" id="registerDept" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="例: 開発部">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">氏名</label>
+                        <input type="text" id="registerName" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="例: 鈴木">
+                    </div>
+                </div>
+
+                <button id="authPrimaryBtn" class="w-full py-2.5 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition mt-4">
+                    ログインする
+                </button>
+
+                <div class="text-center pt-2">
+                    <button id="toggleAuthModeBtn" class="text-xs text-blue-500 hover:underline font-medium">
+                        初めてこのシステムを使う方（新規登録）
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔒 ログイン時のみ表示するメイングリッド -->
+        <div id="appSection" class="hidden flex flex-col gap-6">
+            
+            <!-- 上部：新規予約の範囲選択フォーム -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+              <h2 class="font-bold text-slate-900 flex items-center gap-2 mb-4">
+                <i data-lucide="plus-circle" class="w-5 h-5 text-blue-500"></i> 新しい予約を登録する
+              </h2>
+
+               <!-- ①開始・終了を2列で並べる -->
+               <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">① 開始時間</label>
+                        <select id="startSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium">
+                            <!-- JSで生成 -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">② 終了時間</label>
+                        <select id="endSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium">
+                           <!-- JSで生成 -->
+                        </select>
+                    </div>
+               </div>
+
+               <!-- ②備考欄（横幅いっぱい） -->
+              <div class="mb-4">
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5">③ 備考（来客・打合せ内容など）</label>
+                  <input type="text" id="memoInput" placeholder="表示させたくない場合は、空欄でも構いません" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+              </div>
+              <div class="mb-4">
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5">利用希望日</label>
+                  <input type="text" id="reservationDate" placeholder="日付を選択してください" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm cursor-pointer" readonly>
+              </div>
+
+             <!-- ③予約ボタン -->
+             <button id="submitBookingBtn" class="w-full py-2.5 px-4 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition flex items-center justify-center gap-1.5">
+               <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+               <span id="submitBtnText">この時間帯を予約する</span>
+             </button>
+
+             <!-- 警告メッセージ表示エリア -->
+              <div id="bookingValidationError" class="hidden mt-3 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-medium flex items-center gap-1.5">
+                 <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                 <span id="bookingValidationErrorText">エラーテキスト</span>
+              </div>
+            </div>
+
+            <!-- 下部メイングリッド：プロフィール ＆ カレンダー -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- 左側：自分のプロフィール・案内パネル -->
+                <div class="lg:col-span-1 flex flex-col gap-6">
+                    <!-- ユーザー設定 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i data-lucide="user-check" class="w-4 h-4"></i> ログイン情報
+                        </h2>
+                        <div class="space-y-4 text-sm">
+                            <div>
+                                <span class="block text-xs font-medium text-slate-400">所属部署 / 氏名</span>
+                                <span id="userProfileDisplay" class="font-bold text-slate-800">取得中...</span>
+                            </div>
+                            <div>
+                                <span class="block text-xs font-medium text-slate-400">メールアドレス</span>
+                                <span id="userEmailDisplay" class="text-slate-600 text-xs break-all">取得中...</span>
+                            </div>
+
+                            <!-- 🛠️ プロフィール修正機能（異動・改姓に対応するフォーム） -->
+                            <div class="pt-3 border-t border-slate-100">
+                                <button onclick="toggleProfileEditForm()" class="text-xs text-blue-500 hover:underline flex items-center gap-1">
+                                    <i data-lucide="user-cog" class="w-3.5 h-3.5"></i> 部署名や氏名の修正はこちら
+                                </button>
+                                <div id="profileEditForm" class="hidden mt-3 space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <div>
+                                        <label class="block text-[10px] font-medium text-slate-500 mb-0.5">新しい所属部署</label>
+                                        <input type="text" id="editDept" class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs" placeholder="例: 営業部">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-medium text-slate-500 mb-0.5">新しい氏名</label>
+                                        <input type="text" id="editName" class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs" placeholder="例: 佐藤">
+                                    </div>
+                                    <button onclick="saveUserProfile()" class="w-full py-1 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded shadow-sm transition">変更を保存</button>
+                                </div>
+                            </div>
+
+                            <div class="pt-3 border-t border-slate-100">
+                                <button id="logoutBtn" class="w-full py-2 px-4 text-xs font-medium text-red-600 hover:bg-red-50 rounded-xl transition border border-red-200 flex items-center justify-center gap-2">
+                                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i> ログアウト
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 凡例と機能説明 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">使い方</h2>
+                        <ul class="text-xs text-slate-600 space-y-3">
+                            <li class="flex gap-2">
+                                <span class="w-2 h-2 rounded-full bg-blue-600 mt-1.5 shrink-0 animate-pulse"></span>
+                                <span>上部のセレクトボックスから時間帯を選択すると、スケジュール表に予約予定エリア（青）がくっきりハイライト表示されます。</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="w-2 h-2 rounded-full bg-red-600 mt-1.5 shrink-0"></span>
+                                <span>他の人が予約しているスロットは濃い赤色で表示され、重複しての予約は制限されます。</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="w-2 h-2 rounded-full bg-slate-400 mt-1.5 shrink-0"></span>
+                                <span>取消ボタンを押すと、選択した30分枠の予約だけを個別にキャンセルでき、背景は綺麗な白に戻ります。</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 右側：予約スケジュール表 -->
+                <div class="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="table-properties" class="w-5 h-5 text-blue-500"></i> 応接室 予約スケジュール (8:00 - 19:00)
+                        </h2>
+                        <span id="syncIndicator" class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full animate-pulse"></span> 同期中
+                        </span>
+                    </div>
+
+                    <!-- スケジュールタイムチャート -->
+                    <div class="p-6 overflow-x-auto">
+                        <table class="w-full border-collapse text-left text-sm min-w-[500px]">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="py-3 px-4 text-slate-400 font-semibold w-1/4 text-center">時間帯</th>
+                                    <th class="py-3 px-4 text-slate-400 font-semibold w-1/2">予約状況</th>
+                                    <th class="py-3 px-4 text-slate-400 font-semibold w-1/4 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleBody" class="divide-y divide-slate-100">
+                                <!-- JSによって30分刻みの時間枠が生成される -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 予約登録/削除用のカスタムモーダルダイアログ -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4 transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-100 transform scale-95 transition-all duration-300" id="modalBox">
+            <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mb-2">予約を登録しますか？</h3>
+            <p id="modalDescription" class="text-sm text-slate-500 mb-6">対象の日時: 2026/06/18 10:00 - 11:00</p>
+            
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition">キャンセル</button>
+                <button id="modalConfirmBtn" class="px-5 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition">実行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebaseおよび内部システム処理 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, getDocs, writeBatch, query, where, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 1. Firebase 接続設定の優先判定 ---
+        const savedCustomConfig = localStorage.getItem('custom_firebase_config');
+        
+        const firebaseConfig = savedCustomConfig 
+            ? JSON.parse(savedCustomConfig) 
+            : (PRODUCTION_FIREBASE_CONFIG.apiKey 
+                ? PRODUCTION_FIREBASE_CONFIG 
+                : (typeof __firebase_config !== 'undefined' 
+                    ? JSON.parse(__firebase_config) 
+                    : {
+                        apiKey: "", 
+                        authDomain: "demo-project.firebaseapp.com",
+                        projectId: "demo-project",
+                        storageBucket: "demo-project.appspot.com",
+                        messagingSenderId: "123456",
+                        appId: "1:123456:web:123456"
+                      }));
+
+        const isDemoMode = !firebaseConfig.apiKey;
+
+        let app, auth, db, appId;
+        if (!isDemoMode) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'reception-room-secure';
+        }
+
+        // --- 2. ローカルデモモード用のモックシステム ---
+        let demoCurrentUser = null;
+        const demoAuthListeners = [];
+
+        async function mockCreateUser(email, password, dept, name) {
+            let users = JSON.parse(localStorage.getItem("demo_users") || "[]");
+            if (users.find(u => u.email === email)) {
+                throw { code: "auth/email-already-in-use" };
+            }
+            const uid = "demo_uid_" + Math.random().toString(36).substr(2, 9);
+            const newUser = { uid, email, dept, name };
+            users.push({ ...newUser, password });
+            localStorage.setItem("demo_users", JSON.stringify(users));
+            localStorage.setItem(`profile_${uid}`, JSON.stringify({ dept, name }));
+            setDemoUser(newUser);
+            return { user: newUser };
+        }
+
+        async function mockSignIn(email, password) {
+            let users = JSON.parse(localStorage.getItem("demo_users") || "[]");
+            const user = users.find(u => u.email === email && u.password === password);
+            if (!user) {
+                throw { code: "auth/invalid-credential" };
+            }
+            const loginUser = { uid: user.uid, email: user.email };
+            setDemoUser(loginUser);
+            return { user: loginUser };
+        }
+
+        function setDemoUser(user) {
+            demoCurrentUser = user;
+            if (user) {
+                localStorage.setItem("demo_current_user", JSON.stringify(user));
+            } else {
+                localStorage.removeItem("demo_current_user");
+            }
+            demoAuthListeners.forEach(cb => cb(user));
+        }
+
+        // --- 3. アプリケーション共通の30分時間割定義 ---
+        const TIME_STEPS = [
+            "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"
+        ];
+
+        const TIME_SLOTS = [];
+        for (let i = 0; i < TIME_STEPS.length - 1; i++) {
+            TIME_SLOTS.push(`${TIME_STEPS[i]} - ${TIME_STEPS[i+1]}`);
+        }
+
+        let selectedDate = new Date();
+        let bookingsData = [];
+        let activeModalAction = null;
+        let currentUser = null;
+        let isRegisterMode = false;
+        // 🌟 ここを追加：外部のカレンダーから日付を直接安全に書き換えるための窓口
+        window.forceUpdateDate = function(newDateObj) {
+            selectedDate = newDateObj; // 本物の変数を直接上書き！
+            updateDateDisplay();       // 画面とスケジュールを同期！
+        };
+
+        const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+
+        function getTodayDate() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        window.onload = function() {
+            lucide.createIcons();
+            updateDateDisplay();
+            setupAuthEventListeners();
+            setupConfigPanelValues();
+            setupBookingForm(); 
+
+            document.getElementById("allowedDomainLabel").textContent = `@${ALLOWED_DOMAIN}`;
+            updateModeBanner();
+
+            if (isDemoMode) {
+                demoAuthListeners.push(handleUserChange);
+                const savedDemoUser = localStorage.getItem("demo_current_user");
+                if (savedDemoUser) {
+                    setDemoUser(JSON.parse(savedDemoUser));
+                } else {
+                    setDemoUser(null);
+                }
+            } else {
+                onAuthStateChanged(auth, handleUserChange);
+            }
+        };
+
+        function updateModeBanner() {
+            const banner = document.getElementById("statusBanner");
+            const text = document.getElementById("statusBannerText");
+            const indicator = document.getElementById("syncIndicator");
+
+            if (isDemoMode) {
+                banner.className = "p-3 text-center text-xs font-semibold bg-amber-50 border-b border-amber-100 text-amber-800 flex items-center justify-center gap-2";
+                text.innerHTML = `<i data-lucide="info" class="w-4 h-4 text-amber-600 inline"></i> <strong>ローカルデモモードで動作中</strong> (クラウド設定なしで即時テスト可能)`;
+                indicator.className = "text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1.5";
+                indicator.innerHTML = '<span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span> ローカル同期中';
+            } else {
+                banner.className = "p-3 text-center text-xs font-semibold bg-emerald-50 border-b border-emerald-100 text-emerald-800 flex items-center justify-center gap-2";
+                text.innerHTML = `<i data-lucide="globe" class="w-4 h-4 text-emerald-600 inline"></i> <strong>クラウド接続中</strong> (Firestore実稼働中)`;
+                indicator.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1.5";
+                indicator.innerHTML = '<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> クラウド同期中';
+            }
+            lucide.createIcons();
+        }
+
+        // ログイン監視 & クラウドデータベース(Firestore)からのユーザープロフィール取得ロジック
+        async function handleUserChange(user) {
+            if (user) {
+                currentUser = user;
+                document.getElementById("userEmailDisplay").textContent = user.email;
+                
+                if (!user.email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+                    showAuthError(`許可されていないドメインです。@${ALLOWED_DOMAIN} のみ利用可能です。`);
+                    if (isDemoMode) {
+                        setDemoUser(null);
+                    } else {
+                        await signOut(auth);
+                    }
+                    return;
+                }
+
+                // データベースから「所属部署」と「氏名」を取得する処理
+                let deptVal = "社員";
+                let nameVal = "メンバー";
+
+                if (isDemoMode) {
+                    const savedProfile = localStorage.getItem(`profile_${user.uid}`);
+                    if (savedProfile) {
+                        const prof = JSON.parse(savedProfile);
+                        deptVal = prof.dept;
+                        nameVal = prof.name;
+                    }
+                } else {
+                    try {
+                        // 🌟ローカルストレージではなく、Firestoreの'users'コレクションから直接読み込むように変更！
+                        const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid);
+                        const userDocSnap = await getDoc(userDocRef);
+                        
+                        if (userDocSnap.exists()) {
+                            const prof = userDocSnap.data();
+                            deptVal = prof.dept;
+                            nameVal = prof.name;
+                        } else {
+                            // Firestoreにプロファイルがない場合（古いアカウントなど）、ローカルストレージからサルベージ移行する処理
+                            const legacyProfile = localStorage.getItem(`profile_${user.uid}`);
+                            if (legacyProfile) {
+                                const prof = JSON.parse(legacyProfile);
+                                deptVal = prof.dept;
+                                nameVal = prof.name;
+                                // 移行のためにFirestoreに書き込んであげる
+                                await setDoc(userDocRef, { dept: deptVal, name: nameVal, email: user.email });
+                            }
+                        }
+                    } catch (e) {
+                        console.error("プロフィール取得エラー:", e);
+                    }
+                }
+
+                document.getElementById("userProfileDisplay").textContent = `${deptVal} / ${nameVal}`;
+                // 編集フォームの初期値としてもセットしておく
+                document.getElementById("editDept").value = deptVal;
+                document.getElementById("editName").value = nameVal;
+
+                document.getElementById("authSection").classList.add("hidden");
+                document.getElementById("appSection").classList.remove("hidden");
+                document.getElementById("dateController").classList.remove("opacity-50", "pointer-events-none");
+                document.getElementById("systemSubtitle").textContent = "学内システムに安全にログインしています";
+
+                startRealtimeSync();
+                runAutoCleanup();
+            } else {
+                currentUser = null;
+                document.getElementById("authSection").classList.remove("hidden");
+                document.getElementById("appSection").classList.add("hidden");
+                document.getElementById("dateController").classList.add("opacity-50", "pointer-events-none");
+                document.getElementById("systemSubtitle").textContent = "ログインが必要です（指定ドメインのみ登録可能）";
+            }
+            renderScheduleTable();
+        }
+
+// --- 4. 認証系ロジック ---
+        function setupAuthEventListeners() {
+            const toggleBtn = document.getElementById("toggleAuthModeBtn");
+            const authTitle = document.getElementById("authTitle");
+            const primaryBtn = document.getElementById("authPrimaryBtn");
+            const registerFields = document.getElementById("registerFields");
+            const logoutBtn = document.getElementById("logoutBtn");
+
+            toggleBtn.onclick = () => {
+                isRegisterMode = !isRegisterMode;
+                clearAuthError();
+                if (isRegisterMode) {
+                    authTitle.textContent = "新規アカウント登録";
+                    primaryBtn.textContent = "アカウントを作成する";
+                    toggleBtn.textContent = "このシステムの登録がお済の方（ログイン）";
+                    registerFields.classList.remove("hidden");
+                } else {
+                    authTitle.textContent = "学内アカウントでサインイン";
+                    primaryBtn.textContent = "ログインする";
+                    toggleBtn.textContent = "このシステムを初めて利用する方（新規登録）";
+                    registerFields.classList.add("hidden");
+                }
+            };
+
+            primaryBtn.onclick = async () => {
+                const email = document.getElementById("authEmail").value.trim();
+                const password = document.getElementById("authPassword").value;
+                const dept = document.getElementById("registerDept").value.trim();
+                const name = document.getElementById("registerName").value.trim();
+
+                clearAuthError();
+
+                if (!email || !password) {
+                    showAuthError("メールアドレスとパスワードを入力してください。");
+                    return;
+                }
+
+                if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+                    showAuthError(`「@${ALLOWED_DOMAIN}」のメールアドレスのみ登録・ログインできます。`);
+                    return;
+                }
+
+                if (isRegisterMode) {
+                    // =======================================================
+                    // 🌟 新規アカウント登録処理（ここにすべてを一本化）
+                    // =======================================================
+                    if (!dept || !name) {
+                        showAuthError("部署名と氏名を入力してください。");
+                        return;
+                    }
+
+                    try {
+                        let user;
+                        if (isDemoMode) {
+                            const res = await mockCreateUser(email, password, dept, name);
+                            user = res.user;
+                        } else {
+                            // 1. Firebase Authenticationでアカウントを作成
+                            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                            user = userCredential.user;
+                            
+                            // 2. ユーザー情報をFirestoreに保存（ログイン監視 handleUserChange が読み込める正しいパス！）
+                            const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid);
+                            await setDoc(userDocRef, {
+                                dept: dept,
+                                name: name,
+                                email: email,
+                                createdAt: new Date().toISOString()
+                            });
+
+                            // 3. 確認メールを日本語で送信し、一旦ログアウトさせて仮登録状態にする
+                            const { sendEmailVerification } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                            auth.languageCode = 'ja';
+                            await sendEmailVerification(user);
+                            await signOut(auth);
+                        }
+                        
+                        // 4. モーダルがあれば閉じる
+                        if (window.closeModal) window.closeModal();
+
+                        // 🌟【1秒タイマー】自動引き戻しのバタバタが静止した後にアラートを出す
+                        setTimeout(() => {
+                            alert(
+                                `【仮登録が完了しました！】\n\n` +
+                                `${email} 宛にアカウント有効化メールを送信しました。\n` +
+                                `迷惑メールフォルダに着信している可能性があります。\n` +
+                                `メール内のリンクをクリックしてアカウントを有効化した後、ログイン画面からログインしてください。\n` +
+                                `リンクをクリックし、Complete verification（検証を完了する）を押してください。\n\n` +
+                                `※リンクをクリックするまで、システムにはログインできません。`
+                            );
+                            
+                            // アラートの「OK」が押された瞬間、裏のモードも見た目も通常ログイン画面に強制固定
+                            isRegisterMode = false;
+                            if (authTitle) authTitle.textContent = "学内アカウントでサインイン";
+                            if (primaryBtn) primaryBtn.textContent = "ログインする";
+                            if (toggleBtn) toggleBtn.textContent = "このシステムを初めて利用する方（新規登録）";
+                            if (registerFields) registerFields.classList.add("hidden");
+
+                            // 入力欄をきれいに掃除
+                            document.getElementById("authPassword").value = "";
+                            if (document.getElementById("registerDept")) document.getElementById("registerDept").value = "";
+                            if (document.getElementById("registerName")) document.getElementById("registerName").value = "";
+                        }, 1000);
+
+                    } catch (error) {
+                        console.error("新規登録エラー:", error);
+                        if (error.code === 'auth/email-already-in-use') {
+                            showAuthError("このメールアドレスは既に登録されています。");
+                        } else if (error.code === 'auth/weak-password') {
+                            showAuthError("パスワードが短すぎます。6文字以上で設定してください。");
+                        } else {
+                            showAuthError("登録に失敗しました。入力内容をご確認ください。");
+                        }
+                    }
+                } else {
+                    // =======================================================
+                    // 🌟 通常ログイン処理
+                    // =======================================================
+                    try {
+                        if (isDemoMode) {
+                            await mockSignIn(email, password);
+                        } else {
+                            // ① 普通にログインを試みる
+                            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                            
+                            // ② ログイン直後にメール認証が済んでいるかチェック！
+                            if (window.checkEmailVerificationOnLogin && !window.checkEmailVerificationOnLogin(userCredential.user)) {
+                                return; // 認証がまだなら、ここで処理を終了してメイン画面に進ませない！
+                            }
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        handleAuthError(error);
+                    }
+                }
+            };
+
+            logoutBtn.onclick = async () => {
+                if (confirm("ログアウトしますか？")) {
+                    document.getElementById("profileEditForm").classList.add("hidden");
+                    if (isDemoMode) {
+                        setDemoUser(null);
+                    } else {
+                        await signOut(auth);
+                    }
+                }
+            };
+        }
+
+        // --- 🛠️ 異動・改姓名に対応するためのプロフィール編集機能 ---
+        window.toggleProfileEditForm = function() {
+            const form = document.getElementById("profileEditForm");
+            form.classList.toggle("hidden");
+        };
+
+        window.saveUserProfile = async function() {
+            if (!currentUser) return;
+            const newDept = document.getElementById("editDept").value.trim();
+            const newName = document.getElementById("editName").value.trim();
+
+            if (!newDept || !newName) {
+                alert("新しい部署名と氏名を入力してください。");
+                return;
+            }
+
+            try {
+                if (isDemoMode) {
+                    localStorage.setItem(`profile_${currentUser.uid}`, JSON.stringify({ dept: newDept, name: newName }));
+                    alert("プロフィールの変更（デモモード）を保存しました。");
+                    handleUserChange(currentUser);
+                } else {
+                    // Firestoreのユーザー情報を直接更新
+                    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
+                    await setDoc(userDocRef, {
+                        dept: newDept,
+                        name: newName,
+                        email: currentUser.email,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+
+                    alert("プロフィールの更新に成功しました！異動後の所属名・新しいお名前で応接室をご予約いただけます。");
+                    
+                    // 表示をリロード
+                    handleUserChange(currentUser);
+                }
+                document.getElementById("profileEditForm").classList.add("hidden");
+            } catch (err) {
+                console.error("プロフィール更新エラー:", err);
+                alert("変更の保存に失敗しました。時間をおいて再度お試しください。");
+            }
+        };
+
+        // --- 後半部分の機能群の継続 ---
+        function handleAuthError(error) {
+            let msg = "エラーが発生しました。入力内容を確認してください。";
+            switch (error.code) {
+                case "auth/email-already-in-use":
+                    msg = "このメールアドレスは既に登録されています。";
+                    break;
+                case "auth/invalid-email":
+                    msg = "メールアドレスの形式が正しくありません。";
+                    break;
+                case "auth/weak-password":
+                    msg = "パスワードは6文字以上で設定してください。";
+                    break;
+                case "auth/wrong-password":
+                case "auth/user-not-found":
+                case "auth/invalid-credential":
+                    msg = "メールアドレス、またはパスワードが間違っています。";
+                    break;
+                default:
+                    msg = error.message || msg;
+            }
+            showAuthError(msg);
+        }
+
+        function showAuthError(msg) {
+            const errBox = document.getElementById("authErrorMsg");
+            errBox.textContent = msg;
+            errBox.classList.remove("hidden");
+        }
+
+        function clearAuthError() {
+            const errBox = document.getElementById("authErrorMsg");
+            errBox.classList.add("hidden");
+            errBox.textContent = "";
+        }
+
+        // --- 5. カレンダー・日付・新規予約フォームコントロール ---
+        function formatDateKey(date) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function updateDateDisplay() {
+            const display = document.getElementById("currentDateDisplay");
+            const yyyy = selectedDate.getFullYear();
+            const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(selectedDate.getDate()).padStart(2, '0');
+            const dayName = WEEKDAYS[selectedDate.getDay()];
+            
+            display.textContent = `${yyyy}年${mm}月${dd}日 (${dayName})`;
+            // 🌟【ここに1行追加】＞ ボタンを押したとき、下の予約フォームの日付も一緒に動かす！
+            const formDateInput = document.getElementById("reservationDate");
+            if (formDateInput && formDateInput._flatpickr) {
+                formDateInput._flatpickr.setDate(selectedDate, false);
+            }
+
+            const prevBtn = document.getElementById("prevDateBtn");
+            const today = getTodayDate();
+            const checkDate = new Date(selectedDate);
+            checkDate.setHours(0, 0, 0, 0);
+
+            if (checkDate <= today) {
+                prevBtn.disabled = true;
+                prevBtn.classList.add("opacity-30", "cursor-not-allowed");
+                prevBtn.classList.remove("hover:bg-white");
+            } else {
+                prevBtn.disabled = false;
+                prevBtn.classList.remove("opacity-30", "cursor-not-allowed");
+                prevBtn.classList.add("hover:bg-white");
+            }
+
+            renderScheduleTable();
+            if (currentUser) {
+                updateBookingValidation(); 
+            }
+        }
+
+        window.changeDate = function(days) {
+            const nextDate = new Date(selectedDate);
+            nextDate.setDate(nextDate.getDate() + days);
+            nextDate.setHours(0, 0, 0, 0);
+
+            const today = getTodayDate();
+            if (nextDate < today) {
+                return;
+            }
+
+            selectedDate.setDate(selectedDate.getDate() + days);
+            updateDateDisplay();
+        };
+
+        function setupBookingForm() {
+            const startSelect = document.getElementById("startSelect");
+            const endSelect = document.getElementById("endSelect");
+            const submitBtn = document.getElementById("submitBookingBtn");
+
+            startSelect.innerHTML = "";
+            for (let i = 0; i < TIME_STEPS.length - 1; i++) {
+                const opt = document.createElement("option");
+                opt.value = TIME_STEPS[i];
+                opt.textContent = TIME_STEPS[i];
+                startSelect.appendChild(opt);
+            }
+
+            startSelect.onchange = () => {
+                rebuildEndSelect();
+                updateBookingValidation();
+            };
+
+            endSelect.onchange = () => {
+                updateBookingValidation();
+            };
+
+            function rebuildEndSelect() {
+                const startTime = startSelect.value;
+                const startIndex = TIME_STEPS.indexOf(startTime);
+                
+                endSelect.innerHTML = "";
+                for (let i = startIndex + 1; i < TIME_STEPS.length; i++) {
+                    const opt = document.createElement("option");
+                    opt.value = TIME_STEPS[i];
+                    opt.textContent = TIME_STEPS[i];
+                    endSelect.appendChild(opt);
+                }
+            }
+
+            rebuildEndSelect();
+
+            submitBtn.onclick = () => {
+                if (!currentUser) return;
+                const dateKey = formatDateKey(selectedDate);
+                const startTime = startSelect.value;
+                const endTime = endSelect.value;
+
+                confirmBookingRange(dateKey, startTime, endTime);
+            };
+        }
+
+        function getSelectedSlots(startTime, endTime) {
+            const startIndex = TIME_STEPS.indexOf(startTime);
+            const endIndex = TIME_STEPS.indexOf(endTime);
+            const slots = [];
+            for (let i = startIndex; i < endIndex; i++) {
+                slots.push(`${TIME_STEPS[i]} - ${TIME_STEPS[i+1]}`);
+            }
+            return slots;
+        }
+
+        function updateBookingValidation() {
+            if (!currentUser) return;
+
+            const startSelect = document.getElementById("startSelect");
+            const endSelect = document.getElementById("endSelect");
+            const errorBox = document.getElementById("bookingValidationError");
+            const errorText = document.getElementById("bookingValidationErrorText");
+            const submitBtn = document.getElementById("submitBookingBtn");
+            const submitBtnText = document.getElementById("submitBtnText");
+
+            const startTime = startSelect.value;
+            const endTime = endSelect.value;
+            const dateKey = formatDateKey(selectedDate);
+
+            const targetSlots = getSelectedSlots(startTime, endTime);
+
+            let hasConflict = false;
+            let conflictDetails = "";
+
+            const todayBookings = bookingsData.filter(b => b.date === dateKey);
+
+            targetSlots.forEach(slot => {
+                const booking = todayBookings.find(b => b.timeSlot === slot);
+                if (booking) {
+                    hasConflict = true;
+                    conflictDetails = `${booking.dept} / ${booking.user} (${slot})`;
+                }
+            });
+
+            const tableRows = document.querySelectorAll("#scheduleBody tr");
+            tableRows.forEach(row => {
+                const slot = row.dataset.timeslot;
+                const isBooked = todayBookings.some(b => b.timeSlot === slot);
+                
+                if (isBooked) {
+                    row.className = "bg-red-100 border-l-4 border-red-600 font-medium text-red-950 transition";
+                } else {
+                    row.className = "bg-white hover:bg-slate-50 transition";
+                }
+            });
+
+            targetSlots.forEach(slot => {
+                const targetRow = Array.from(tableRows).find(row => row.dataset.timeslot === slot);
+                if (targetRow) {
+                    if (hasConflict) {
+                        targetRow.className = "bg-red-200 border-l-4 border-red-700 font-semibold text-red-950 transition";
+                    } else {
+                        targetRow.className = "bg-blue-100 border-l-4 border-blue-600 font-semibold text-blue-950 transition";
+                    }
+                }
+            });
+
+            if (hasConflict) {
+                errorText.textContent = `選択した時間帯の一部が既に予約されています: ${conflictDetails}`;
+                errorBox.classList.remove("hidden");
+                submitBtn.disabled = true;
+                submitBtnText.textContent = "予約不可（被りあり）";
+            } else {
+                errorBox.classList.add("hidden");
+                submitBtn.disabled = false;
+                submitBtnText.textContent = `予約を確定 (${startTime} 〜 ${endTime})`;
+            }
+        }
+
+        // --- 6. 同期システム & 自動整理 ---
+        function startRealtimeSync() {
+            if (!currentUser) return;
+
+            if (isDemoMode) {
+                const loadDemoBookings = () => {
+                    bookingsData = JSON.parse(localStorage.getItem("demo_bookings") || "[]");
+                    renderScheduleTable();
+                    updateBookingValidation();
+                };
+                loadDemoBookings();
+                window.addEventListener('storage', (e) => {
+                    if (e.key === 'demo_bookings') {
+                        loadDemoBookings();
+                    }
+                });
+            } else {
+                const bookingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+                onSnapshot(bookingsCol, (snapshot) => {
+                    bookingsData = [];
+                    snapshot.forEach((doc) => {
+                        bookingsData.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    renderScheduleTable();
+                    updateBookingValidation();
+                }, (error) => {
+                    console.error("データ同期エラー:", error);
+                });
+            }
+        }
+
+        async function runAutoCleanup() {
+            if (!currentUser) return;
+            const todayStr = formatDateKey(new Date());
+
+            if (isDemoMode) {
+                let bookings = JSON.parse(localStorage.getItem("demo_bookings") || "[]");
+                const originalLength = bookings.length;
+                bookings = bookings.filter(b => b.date >= todayStr);
+                if (bookings.length !== originalLength) {
+                    localStorage.setItem("demo_bookings", JSON.stringify(bookings));
+                    bookingsData = bookings;
+                    renderScheduleTable();
+                }
+            } else {
+                const bookingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+                try {
+                    const querySnapshot = await getDocs(bookingsCol);
+                    querySnapshot.forEach(async (document) => {
+                        const data = document.data();
+                        if (data.date < todayStr) {
+                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', document.id);
+                            await deleteDoc(docRef);
+                        }
+                    });
+                } catch (err) {
+                    console.error("自動クリーンアップエラー:", err);
+                }
+            }
+        }
+
+        // スケジュール表のレンダリング
+        function renderScheduleTable() {
+            const scheduleBody = document.getElementById("scheduleBody");
+            scheduleBody.innerHTML = "";
+
+            if (!currentUser) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td colspan="3" class="py-12 text-center text-slate-400">
+                        <i data-lucide="lock" class="w-8 h-8 mx-auto mb-2 opacity-50 text-slate-400"></i>
+                        スケジュールを表示するにはログインしてください
+                    </td>
+                `;
+                scheduleBody.appendChild(tr);
+                lucide.createIcons();
+                return;
+            }
+
+            const dateKey = formatDateKey(selectedDate);
+
+            TIME_SLOTS.forEach((slot) => {
+                const booking = bookingsData.find(b => b.date === dateKey && b.timeSlot === slot);
+
+                const tr = document.createElement("tr");
+                tr.dataset.timeslot = slot; 
+
+                const tdTime = document.createElement("td");
+                tdTime.className = "py-4 px-4 font-bold text-slate-700 text-center border-r border-slate-100 select-none";
+                tdTime.textContent = slot;
+
+                const tdStatus = document.createElement("td");
+                tdStatus.className = "py-4 px-4";
+
+                const tdAction = document.createElement("td");
+                tdAction.className = "py-4 px-4 text-center";
+
+                if (booking) {
+                    tr.className = "bg-red-100 border-l-4 border-red-600 font-medium text-red-950 transition";
+
+                    tdStatus.innerHTML = `
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-red-200 text-red-900 border border-red-300">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span> 予約中
+                            </span>
+                            <span class="text-sm font-semibold text-slate-900">${escapeHtml(booking.dept)} / ${escapeHtml(booking.user)}</span>
+                        </div>
+                        ${booking.memo ? `<div class="text-xs text-red-800 ml-2 italic">・${escapeHtml(booking.memo)}</div>` : ""}
+                    </div>
+                `;
+
+                    const isMyBooking = (booking.createdUserId === currentUser.uid) || ADMIN_EMAILS.includes(currentUser.email);
+
+                    const btn = document.createElement("button");
+                    if (isMyBooking) {
+                        btn.className = "px-3 py-1.5 text-xs font-semibold text-red-700 bg-white hover:bg-red-50 rounded-lg transition border border-red-300 shadow-sm";
+                        btn.innerHTML = `<i data-lucide="trash-2" class="w-3.5 h-3.5 inline mr-1"></i> 取消`;
+                        btn.onclick = () => confirmCancelSingle(booking.id, dateKey, slot, booking.dept, booking.user);
+                    } else {
+                        btn.className = "px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-50 border border-slate-200 rounded-lg cursor-not-allowed opacity-60";
+                        btn.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5 inline mr-1"></i> 他者予約`;
+                        btn.disabled = true;
+                    }
+                    tdAction.appendChild(btn);
+
+                } else {
+                    tr.className = "bg-white hover:bg-slate-50 transition";
+
+                    tdStatus.innerHTML = `
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-700">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 空き
+                        </span>
+                    `;
+
+                    const btn = document.createElement("button");
+                    btn.className = "px-3 py-1.5 text-xs font-medium text-slate-500 bg-white hover:bg-slate-100 rounded-lg transition border border-slate-200 shadow-sm";
+                    btn.innerHTML = `<i data-lucide="chevrons-up" class="w-3.5 h-3.5 inline mr-1"></i> 開始に指定`;
+                    btn.onclick = () => {
+                        const startVal = slot.split(" - ")[0];
+                        document.getElementById("startSelect").value = startVal;
+                        document.getElementById("startSelect").dispatchEvent(new Event('change'));
+                    };
+                    tdAction.appendChild(btn);
+                }
+
+                tr.appendChild(tdTime);
+                tr.appendChild(tdStatus);
+                tr.appendChild(tdAction);
+                scheduleBody.appendChild(tr);
+            });
+
+            lucide.createIcons();
+        }
+
+        // --- 7. 予約の範囲登録と個別の決定アクション ---
+        function confirmBookingRange(date, startTime, endTime) {
+            const memo = document.getElementById("memoInput").value;
+            
+            // 🌟ローカルストレージのフォールバックに加え、Firestoreのデータを基準にしたプロフィール情報を引き出す
+            const profileDisplay = document.getElementById("userProfileDisplay").textContent;
+            const profileParts = profileDisplay.split(" / ");
+            const myProfile = {
+                dept: profileParts[0] || "社員",
+                name: profileParts[1] || "メンバー"
+            };
+            
+            const displayDate = selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            document.getElementById("modalTitle").textContent = "この時間帯を一括で予約しますか？";
+            document.getElementById("modalDescription").innerHTML = `
+                <div class="space-y-1">
+                    <p><strong class="text-slate-700">日時:</strong> ${displayDate} ${startTime} 〜 ${endTime}</p>
+                    <p><strong class="text-slate-700">予約者:</strong> ${myProfile.dept} / ${myProfile.name}</p>
+                </div>
+            `;
+
+            activeModalAction = async () => {
+                const targetSlots = getSelectedSlots(startTime, endTime);
+                const bookingId = "b_" + Date.now(); 
+
+                try {
+                    if (isDemoMode) {
+                        let bookings = JSON.parse(localStorage.getItem("demo_bookings") || "[]");
+
+                        targetSlots.forEach(slot => {
+                            const docId = `${date}_${slot.replace(/[\s:-]/g, "")}`;
+                            bookings = bookings.filter(b => b.id !== docId); 
+                            bookings.push({
+                                id: docId,
+                                bookingId: bookingId,
+                                date: date,
+                                timeSlot: slot,
+                                dept: myProfile.dept,
+                                user: myProfile.name,
+                                memo: memo, 
+                                createdUserId: currentUser.uid,
+                                createdAt: new Date().toISOString()
+                            });
+                        });
+
+                        localStorage.setItem("demo_bookings", JSON.stringify(bookings));
+                        bookingsData = bookings;
+                    } else {
+                        const batch = writeBatch(db);
+                        targetSlots.forEach(slot => {
+                            const docId = `${date}_${slot.replace(/[\s:-]/g, "")}`;
+                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', docId);
+                            batch.set(docRef, {
+                                bookingId: bookingId,
+                                date: date,
+                                timeSlot: slot,
+                                dept: myProfile.dept,
+                                user: myProfile.name,
+                                memo: memo, 
+                                createdUserId: currentUser.uid,
+                                createdAt: new Date().toISOString()
+                            });
+                        });
+                        await batch.commit();
+                    }
+
+                    closeModal();
+                    renderScheduleTable();
+                    updateBookingValidation();
+                    document.getElementById("memoInput").value = "";
+                } catch (err) {
+                    console.error("予約一括登録エラー:", err);
+                    alert("登録に失敗しました。");
+                }
+            };
+
+            openModal();
+        }
+
+        function confirmCancelSingle(docId, date, slot, dept, name) {
+            const displayDate = selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            document.getElementById("modalTitle").textContent = "この時間帯の予約を取り消しますか？";
+            document.getElementById("modalDescription").innerHTML = `
+                <div class="space-y-1">
+                    <p class="text-red-500 font-semibold mb-2">※選択した30分枠のみがキャンセルされ、背景色は白に戻ります。</p>
+                    <p><strong class="text-slate-700">日時:</strong> ${displayDate} ${slot}</p>
+                    <p><strong class="text-slate-700">予約者:</strong> ${dept} / ${name}</p>
+                </div>
+            `;
+
+            activeModalAction = async () => {
+                try {
+                    if (isDemoMode) {
+                        let bookings = JSON.parse(localStorage.getItem("demo_bookings") || "[]");
+                        bookings = bookings.filter(b => b.id !== docId);
+                        localStorage.setItem("demo_bookings", JSON.stringify(bookings));
+                        bookingsData = bookings;
+                    } else {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', docId);
+                        await deleteDoc(docRef);
+                    }
+                    closeModal();
+                    renderScheduleTable();
+                    updateBookingValidation();
+                } catch (err) {
+                    console.error("キャンセルエラー:", err);
+                    alert("キャンセルに失敗しました。");
+                }
+            };
+
+            openModal();
+        }
+
+        // --- 8. 各種設定パネル・モーダル表示処理 ---
+        function setupConfigPanelValues() {
+            const configInput = document.getElementById("configInput");
+            if (savedCustomConfig) {
+                configInput.value = savedCustomConfig;
+            } else if (firebaseConfig.apiKey) {
+                configInput.value = JSON.stringify(firebaseConfig, null, 2);
+            }
+        }
+
+        window.toggleConfigPanel = function() {
+            const panel = document.getElementById("configPanel");
+            panel.classList.toggle("hidden");
+        };
+
+        window.saveCustomConfig = function() {
+            const input = document.getElementById("configInput").value.trim();
+            if (!input) {
+                alert("設定を入力してください。");
+                return;
+            }
+            try {
+                JSON.parse(input);
+                localStorage.setItem('custom_firebase_config', input);
+                alert("本本番設定を保存しました。再起動してクラウドに接続します！");
+                location.reload();
+            } catch (e) {
+                alert("JSONのフォーマットが正しくありません。");
+            }
+        };
+
+        window.clearCustomConfig = function() {
+            localStorage.removeItem('custom_firebase_config');
+            alert("設定をクリアしました。ローカルデモモードで再起動します！");
+            location.reload();
+        };
+
+        function openModal() {
+            const overlay = document.getElementById("modalOverlay");
+            const box = document.getElementById("modalBox");
+            overlay.classList.remove("hidden");
+            overlay.classList.add("flex");
+            setTimeout(() => {
+                box.classList.remove("scale-95");
+                box.classList.add("scale-100");
+            }, 10);
+        }
+
+        window.closeModal = function() {
+            const overlay = document.getElementById("modalOverlay");
+            const box = document.getElementById("modalBox");
+            box.classList.remove("scale-100");
+            box.classList.add("scale-95");
+            setTimeout(() => {
+                overlay.classList.add("hidden");
+                overlay.classList.remove("flex");
+                activeModalAction = null;
+            }, 150);
+        };
+
+        document.getElementById("modalConfirmBtn").onclick = function() {
+            if (activeModalAction) {
+                activeModalAction();
+            }
+        };
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
