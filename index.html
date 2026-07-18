@@ -185,7 +185,7 @@
                     <h1 class="text-xl font-bold text-slate-900">応接室予約システム</h1>
                     <div class="flex items-center gap-2 mt-0.5 select-none">
                         <p id="systemSubtitle" class="text-xs text-slate-500">読み込み中...</p>
-                        <span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Ver: 2026_06_24_01</span>
+                        <span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Ver: 2026_07_18_02</span>
                     </div>
                 </div>
             </div>
@@ -212,7 +212,7 @@
             </div>
         </header>
 
-        <!-- 🔓 未ログイン時の表示：認証カード（登録/ログイン） -->
+<!-- 🔒 未ログイン時の表示：認証カード（登録/ログイン） -->
         <div id="authSection" class="max-w-md mx-auto my-12 bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
             <!-- 動作モードステータスバナー -->
             <div id="statusBanner" class="p-3 text-center text-xs font-semibold border-b flex items-center justify-center gap-2">
@@ -235,13 +235,13 @@
 
                 <div>
                     <label class="block text-xs font-medium text-slate-500 mb-1">メールアドレス</label>
-                    <input type="email" id="authEmail" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="user@your-company.com">
+                    <input type="email" id="authEmail" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="user@seiwa.ac.jp">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-500 mb-1">このシステムのパスワード（６文字以上）</label>
                     <input type="password" id="authPassword" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="••••••••">
-                    <!-- パスワードを忘れた場合のリンク -->
-                    <div class="text-right mt-2">
+                    <!-- 💡 パスワードを忘れた場合のリンク（IDを持たせたContainerで囲みました） -->
+                    <div id="forgotPasswordLinkContainer" class="text-right mt-2">
                         <button type="button" onclick="handlePasswordReset()" class="text-xs text-blue-600 hover:underline">
                             パスワードをお忘れの方はこちら
                         </button>
@@ -252,11 +252,11 @@
                 <div id="registerFields" class="hidden space-y-4 pt-2 border-t border-slate-100 animate-fadeIn">
                     <div>
                         <label class="block text-xs font-medium text-slate-500 mb-1">所属部署</label>
-                        <input type="text" id="registerDept" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="例: 開発部">
+                        <input type="text" id="registerDept" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="例: 事務局、英語科">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-500 mb-1">氏名</label>
-                        <input type="text" id="registerName" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="例: 鈴木">
+                        <input type="text" id="registerName" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="例: 山田 太郎">
                     </div>
                 </div>
 
@@ -266,7 +266,7 @@
 
                 <div class="text-center pt-2">
                     <button id="toggleAuthModeBtn" class="text-xs text-blue-500 hover:underline font-medium">
-                        初めてこのシステムを使う方（新規登録）
+                        初めてこの三神峯事務室システムを使う方（新規登録）
                     </button>
                 </div>
             </div>
@@ -520,6 +520,7 @@
         let activeModalAction = null;
         let currentUser = null;
         let isRegisterMode = false;
+        let isResetMode = false; // 🌟 新たにパスワードリセットモードの状態管理変数を追加
         // 🌟 ここを追加：外部のカレンダーから日付を直接安全に書き換えるための窓口
         window.forceUpdateDate = function(newDateObj) {
             selectedDate = newDateObj; // 本物の変数を直接上書き！
@@ -660,20 +661,72 @@
             const logoutBtn = document.getElementById("logoutBtn");
 
             toggleBtn.onclick = () => {
-                isRegisterMode = !isRegisterMode;
                 clearAuthError();
+                const forgotLinkContainer = document.getElementById("forgotPasswordLinkContainer");
+                const passwordInput = document.getElementById("authPassword");
+
+                // 🌟 もし今が「パスワード再設定モード」なら、強制的にログイン画面に戻す
+                if (isResetMode) {
+                    isResetMode = false;
+                    isRegisterMode = false;
+                    
+                    authTitle.textContent = "学内アカウントでサインイン";
+                    primaryBtn.textContent = "ログインする";
+                    toggleBtn.textContent = "この三神峯事務室システムを初めて利用する方（新規登録）";
+                    registerFields.classList.add("hidden");
+                    
+                    if (forgotLinkContainer) forgotLinkContainer.classList.remove("hidden");
+                    if (passwordInput && passwordInput.parentElement) {
+                        passwordInput.parentElement.classList.remove("hidden"); // パスワード欄を復活
+                    }
+                    return; // 処理を抜ける
+                }
+
+                // 通常の「新規登録 ⇄ ログイン」の切り替え処理
+                isRegisterMode = !isRegisterMode;
+
                 if (isRegisterMode) {
                     authTitle.textContent = "新規アカウント登録";
                     primaryBtn.textContent = "アカウントを作成する";
-                    toggleBtn.textContent = "このシステムの登録がお済の方（ログイン）";
+                    toggleBtn.textContent = "この三神峯事務室システムの登録がお済の方（ログイン）";
                     registerFields.classList.remove("hidden");
+                    if (forgotLinkContainer) forgotLinkContainer.classList.add("hidden");
                 } else {
                     authTitle.textContent = "学内アカウントでサインイン";
                     primaryBtn.textContent = "ログインする";
-                    toggleBtn.textContent = "このシステムを初めて利用する方（新規登録）";
+                    toggleBtn.textContent = "この三神峯事務室システムを初めて利用する方（新規登録）";
                     registerFields.classList.add("hidden");
+                    if (forgotLinkContainer) forgotLinkContainer.classList.remove("hidden");
                 }
             };
+
+            // 🌟 パスワードリセット画面へ切り替える関数
+        window.handlePasswordReset = function() {
+            isResetMode = true;
+            isRegisterMode = false; // 新規登録モードは強制オフ
+            clearAuthError();
+
+            const authTitle = document.getElementById("authTitle");
+            const primaryBtn = document.getElementById("authPrimaryBtn");
+            const toggleBtn = document.getElementById("toggleAuthModeBtn");
+            const registerFields = document.getElementById("registerFields");
+            const forgotLinkContainer = document.getElementById("forgotPasswordLinkContainer");
+
+            // 画面の表示をパスワード再設定用に書き換える
+            if (authTitle) authTitle.textContent = "パスワードの再設定";
+            if (primaryBtn) primaryBtn.textContent = "再設定メールを送信する";
+            if (toggleBtn) toggleBtn.textContent = "ログイン画面に戻る";
+            
+            // 不要な入力欄やリンクを隠す
+            if (registerFields) registerFields.classList.add("hidden");
+            if (forgotLinkContainer) forgotLinkContainer.classList.add("hidden");
+
+            // パスワード入力欄自体もリセット時は不要なので隠す
+            const passwordInput = document.getElementById("authPassword");
+            if (passwordInput && passwordInput.parentElement) {
+                passwordInput.parentElement.classList.add("hidden");
+            }
+        };
 
             primaryBtn.onclick = async () => {
                 const email = document.getElementById("authEmail").value.trim();
@@ -683,20 +736,65 @@
 
                 clearAuthError();
 
-                if (!email || !password) {
-                    showAuthError("メールアドレスとパスワードを入力してください。");
-                    return;
+                // 🌟 パスワードリセットモードの場合のみ、まずはメールアドレスの単体チェック
+                if (isResetMode) {
+                    if (!email) {
+                        showAuthError("メールアドレスを入力してください。");
+                        return;
+                    }
+                } else {
+                    // 通常のログイン・新規登録時は、メールアドレスとパスワードの両方が必須
+                    if (!email || !password) {
+                        showAuthError("メールアドレスとパスワードを入力してください。");
+                        return;
+                    }
                 }
 
+                // 共通のドメインチェック（パスワードリセット時も対象）
                 if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
                     showAuthError(`「@${ALLOWED_DOMAIN}」のメールアドレスのみ登録・ログインできます。`);
                     return;
                 }
 
+                // =======================================================
+                // 🌟 【新規追加】パスワードリセット（再設定メール送信）処理
+                // =======================================================
+                if (isResetMode) {
+                    try {
+                        if (isDemoMode) {
+                            alert("【デモモード】パスワード再設定メールの送信シミュレーションが成功しました。");
+                        } else {
+                            // Firebase AuthenticationからsendPasswordResetEmailを動的にインポートして送信
+                            const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                            auth.languageCode = 'ja'; // メール言語を日本語に設定
+                            await sendPasswordResetEmail(auth, email);
+                            
+                            alert(
+                                `【パスワード再設定メールを送信しました】\n\n` +
+                                `${email} 宛に再設定用のリンクを送信しました。\n` +
+                                `メール内に記載されたリンクから新しいパスワードを設定してください。\n\n` +
+                                `※メールが届かない場合は、迷惑メールフォルダもご確認ください。`
+                            );
+                        }
+                        // 送信成功後、自動的にログイン画面に戻す（下部のトグルボタンのクリックを模倣）
+                        if (toggleBtn) toggleBtn.click();
+                    } catch (error) {
+                        console.error("パスワードリセットエラー:", error);
+                        if (error.code === "auth/user-not-found") {
+                            showAuthError("このメールアドレスは登録されていません。");
+                        } else if (error.code === "auth/invalid-email") {
+                            showAuthError("メールアドレスの形式が正しくありません。");
+                        } else {
+                            showAuthError("メール送信に失敗しました。時間をおいて再度お試しください。");
+                        }
+                    }
+                    return; // リセット処理はここで終了
+                }
+
+                // =======================================================
+                // 🌟 新規アカウント登録処理（既存ロジック）
+                // =======================================================
                 if (isRegisterMode) {
-                    // =======================================================
-                    // 🌟 新規アカウント登録処理（ここにすべてを一本化）
-                    // =======================================================
                     if (!dept || !name) {
                         showAuthError("部署名と氏名を入力してください。");
                         return;
@@ -712,7 +810,7 @@
                             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                             user = userCredential.user;
                             
-                            // 2. ユーザー情報をFirestoreに保存（ログイン監視 handleUserChange が読み込める正しいパス！）
+                            // 2. ユーザー情報をFirestoreに保存
                             const userDocRef = doc(db, 'common_users', user.uid);
                             await setDoc(userDocRef, {
                                 dept: dept,
@@ -746,7 +844,7 @@
                             isRegisterMode = false;
                             if (authTitle) authTitle.textContent = "学内アカウントでサインイン";
                             if (primaryBtn) primaryBtn.textContent = "ログインする";
-                            if (toggleBtn) toggleBtn.textContent = "このシステムを初めて利用する方（新規登録）";
+                            if (toggleBtn) toggleBtn.textContent = "この三神峯事務室システムを初めて利用する方（新規登録）";
                             if (registerFields) registerFields.classList.add("hidden");
 
                             // 入力欄をきれいに掃除
@@ -767,7 +865,7 @@
                     }
                 } else {
                     // =======================================================
-                    // 🌟 通常ログイン処理
+                    // 🌟 通常ログイン処理（既存ロジック）
                     // =======================================================
                     try {
                         if (isDemoMode) {
