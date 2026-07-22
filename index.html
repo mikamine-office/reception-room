@@ -275,8 +275,8 @@
                 </button>
 
                 <div class="text-center pt-2">
-                    <button id="toggleAuthModeBtn" class="text-xs text-blue-500 hover:underline font-medium">
-                        初めてこの三神峯事務室システムを使う方（新規登録）
+                    <button id="toggleAuthModeBtn" class="text-base text-blue-500 hover:underline font-medium">
+                        <span class="text-red-600">初めて</span>この三神峯事務室システムを使う方（新規登録）
                     </button>
                 </div>
             </div>
@@ -682,7 +682,7 @@
                     
                     authTitle.textContent = "学内アカウントでサインイン";
                     primaryBtn.textContent = "ログインする";
-                    toggleBtn.textContent = "この三神峯事務室システムを初めて利用する方（新規登録）";
+                    toggleBtn.innerHTML = 'この三神峯事務室システムを<span class="text-red-600 font-bold">初めて</span>利用する方（新規登録）';
                     registerFields.classList.add("hidden");
                     
                     if (forgotLinkContainer) forgotLinkContainer.classList.remove("hidden");
@@ -698,13 +698,13 @@
                 if (isRegisterMode) {
                     authTitle.textContent = "新規アカウント登録";
                     primaryBtn.textContent = "アカウントを作成する";
-                    toggleBtn.textContent = "この三神峯事務室システムの登録がお済の方（ログイン）";
+                    toggleBtn.innerHTML = 'この三神峯事務室システムの登録が<span class="text-red-600 font-bold">お済の方</span>（ログイン）';
                     registerFields.classList.remove("hidden");
                     if (forgotLinkContainer) forgotLinkContainer.classList.add("hidden");
                 } else {
                     authTitle.textContent = "学内アカウントでサインイン";
                     primaryBtn.textContent = "ログインする";
-                    toggleBtn.textContent = "この三神峯事務室システムを初めて利用する方（新規登録）";
+                    toggleBtn.innerHTML = 'この三神峯事務室システムを<span class="text-red-600 font-bold">初めて</span>利用する方（新規登録）';
                     registerFields.classList.add("hidden");
                     if (forgotLinkContainer) forgotLinkContainer.classList.remove("hidden");
                 }
