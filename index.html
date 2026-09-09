@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,10 +13,11 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
 <body class="bg-slate-50 text-slate-800 min-h-screen">
 
     <div id="configPanel" class="max-w-6xl mx-auto px-4 pt-4 hidden">
-        </div>
+    </div>
 
     <script type="module">
         // 1. インターネットからFirebaseの主要機能を読み込む
@@ -30,7 +32,7 @@
         document.addEventListener('contextmenu', e => e.preventDefault());
 
         // 特定のキー操作（F12、ソース表示など）をピンポイントで潰す
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             // F12キーを禁止
             if (e.key === 'F12') {
                 e.preventDefault();
@@ -48,14 +50,14 @@
         // ==========================================
         // 📅 【土日解放＆完全同期版】カレンダー起動コード
         // ==========================================
-        
+
         const flatpickrConfig = {
             locale: "ja",
             dateFormat: "Y-m-d",
             minDate: "today",
             maxDate: new Date().fp_incr(30),
             // 💡 「disable: [...]」の土日ロックの記述を完全に削除しました！これで土日も選べます。
-            onChange: function(selectedDates, dateStr) {
+            onChange: function (selectedDates, dateStr) {
                 if (selectedDates.length > 0) {
                     const targetDate = new Date(selectedDates[0]);
 
@@ -80,13 +82,13 @@
         flatpickr("#reservationDate", flatpickrConfig);
         // ==========================================
         // ==========================================
-        
+
         // ==========================================
         // 🌟 開発者向け【本番用】各種設定エリア 🌟
         // ==========================================
-        
+
         // 新しく取得した4つ目のアカウントの接続情報をここに上書き
-        window. PRODUCTION_FIREBASE_CONFIG = {
+        window.PRODUCTION_FIREBASE_CONFIG = {
             apiKey: "AIzaSyAL9f7KI0DfiOo0xqGGdAMKWFCI82k31N8",
             authDomain: "reserved-room-d300a.firebaseapp.com",
             projectId: "reserved-room-d300a",
@@ -96,21 +98,21 @@
         };
 
         // 2. 許可する会社のメールアドレスドメイン
-        window. ALLOWED_DOMAIN = "seiwa.ac.jp"; // 会社のメールドメイン に書き換え
+        window.ALLOWED_DOMAIN = "seiwa.ac.jp"; // 会社のメールドメイン に書き換え
         // ★ここを配列に変更（4人までならカンマ区切りで追加）
-        window. ADMIN_EMAILS = [
-           "yasumasa.terano@seiwa.ac.jp",
-           "satou.masanori@seiwa.ac.jp",
-           "usui.naoko@seiwa.ac.jp",
-           "mori.takeru@seiwa.ac.jp"
+        window.ADMIN_EMAILS = [
+            "yasumasa.terano@seiwa.ac.jp",
+            "satou.masanori@seiwa.ac.jp",
+            "usui.naoko@seiwa.ac.jp",
+            "tachibana.ayako@seiwa.ac.jp"
         ];
-// 「const」を消して、直接「window.」の箱にしている
-         window.firebaseApp = initializeApp(window.PRODUCTION_FIREBASE_CONFIG);
-         window.auth = getAuth(window.firebaseApp);
-         window.db = getFirestore(window.firebaseApp);
-         
-         // 👇 ここから追加：パスワード再設定ボタンが押された時の処理
-        window.handlePasswordReset = async function() {
+        // 「const」を消して、直接「window.」の箱にしている
+        window.firebaseApp = initializeApp(window.PRODUCTION_FIREBASE_CONFIG);
+        window.auth = getAuth(window.firebaseApp);
+        window.db = getFirestore(window.firebaseApp);
+
+        // 👇 ここから追加：パスワード再設定ボタンが押された時の処理
+        window.handlePasswordReset = async function () {
             const email = prompt("登録されているメールアドレスを入力してください：");
             if (!email) return; // キャンセルされたら何もしない
 
@@ -123,7 +125,7 @@
             try {
                 // インターネット経由でFirebaseの認証部品からメール送信機能を読み込む
                 const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
-                
+
                 // パスワード再設定メールを送信！
                 await sendPasswordResetEmail(window.auth, email);
                 alert("パスワード再設定メールを送信しました！メールボックスをご確認ください。\n\n迷惑メールボックスに届いている可能性があります。");
@@ -142,7 +144,7 @@
         // =======================================================
         // 🌟 ログイン時のメール確認チェック機能だけを残す
         // =======================================================
-        window.checkEmailVerificationOnLogin = function(user) {
+        window.checkEmailVerificationOnLogin = function (user) {
             if (!user.emailVerified) {
                 alert("まだメールの確認が完了していません！\n届いたメールのリンクをクリックしてアカウントを有効化してください。");
                 import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js").then(({ signOut }) => {
@@ -164,19 +166,24 @@
             <p class="text-xs text-slate-500 mb-4">
                 プログラムコードを書き換えずに、ブラウザ上で個別に一時的な接続情報を適用したい場合は、ここにFirebase設定コード（JSON）を貼り付けてください。
             </p>
-            <textarea id="configInput" class="w-full h-32 p-3 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}'></textarea>
+            <textarea id="configInput"
+                class="w-full h-32 p-3 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}'></textarea>
             <div class="flex justify-between items-center mt-3">
-                <button onclick="clearCustomConfig()" class="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition font-medium">設定をクリアして規定モード（デモ/コード設定）に戻す</button>
-                <button onclick="saveCustomConfig()" class="px-4 py-2 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition shadow-sm">設定を保存して再起動</button>
+                <button onclick="clearCustomConfig()"
+                    class="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition font-medium">設定をクリアして規定モード（デモ/コード設定）に戻す</button>
+                <button onclick="saveCustomConfig()"
+                    class="px-4 py-2 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition shadow-sm">設定を保存して再起動</button>
             </div>
         </div>
     </div>
 
     <!-- メインコンテナ -->
     <div class="max-w-6xl mx-auto px-4 py-6">
-        
+
         <!-- ヘッダー -->
-        <header class="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+        <header
+            class="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
                 <div class="p-3 bg-blue-500 text-white rounded-xl">
                     <i data-lucide="calendar-range" class="w-6 h-6"></i>
@@ -185,37 +192,45 @@
                     <h1 class="text-xl font-bold text-slate-900">応接室予約システム</h1>
                     <div class="flex items-center gap-2 mt-0.5 select-none">
                         <p id="systemSubtitle" class="text-xs text-slate-500">読み込み中...</p>
-                        <span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Ver: 2026_07_21_01</span>
+                        <span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Ver:
+                            2026_07_21_01</span>
                     </div>
                 </div>
             </div>
-            
+
             <div class="flex items-center gap-4 flex-wrap">
                 <!-- 日付切り替えコントロール -->
                 <div id="dateController" class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl">
-                    <button id="prevDateBtn" onclick="changeDate(-1)" class="p-2 hover:bg-white rounded-lg transition text-slate-600 hover:text-slate-900">
+                    <button id="prevDateBtn" onclick="changeDate(-1)"
+                        class="p-2 hover:bg-white rounded-lg transition text-slate-600 hover:text-slate-900">
                         <i data-lucide="chevron-left" class="w-5 h-5"></i>
                     </button>
-                    
-                    <span id="currentDateDisplay" class="flatpickr-date font-semibold px-4 text-slate-700 select-none cursor-pointer hover:bg-white/50 rounded-lg py-1 transition">2026年06月23日 (火)</span>
-                    
-                    <button onclick="changeDate(1)" class="p-2 hover:bg-white rounded-lg transition text-slate-600 hover:text-slate-900">
+
+                    <span id="currentDateDisplay"
+                        class="flatpickr-date font-semibold px-4 text-slate-700 select-none cursor-pointer hover:bg-white/50 rounded-lg py-1 transition">2026年06月23日
+                        (火)</span>
+
+                    <button onclick="changeDate(1)"
+                        class="p-2 hover:bg-white rounded-lg transition text-slate-600 hover:text-slate-900">
                         <i data-lucide="chevron-right" class="w-5 h-5"></i>
                     </button>
                 </div>
 
                 <!-- 接続設定切り替えボタン -->
-                <button onclick="toggleConfigPanel()" class="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
+                <button onclick="toggleConfigPanel()"
+                    class="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold">
                     <i data-lucide="settings" class="w-4 h-4"></i>
                     <span>接続設定</span>
                 </button>
             </div>
         </header>
 
-<!-- 🔒 未ログイン時の表示：認証カード（登録/ログイン） -->
-        <div id="authSection" class="max-w-md mx-auto my-12 bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
+        <!-- 🔒 未ログイン時の表示：認証カード（登録/ログイン） -->
+        <div id="authSection"
+            class="max-w-md mx-auto my-12 bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
             <!-- 動作モードステータスバナー -->
-            <div id="statusBanner" class="p-3 text-center text-xs font-semibold border-b flex items-center justify-center gap-2">
+            <div id="statusBanner"
+                class="p-3 text-center text-xs font-semibold border-b flex items-center justify-center gap-2">
                 <span class="w-2 h-2 rounded-full animate-pulse"></span>
                 <span id="statusBannerText">ステータス確認中...</span>
             </div>
@@ -224,25 +239,33 @@
                 <h2 id="authTitle" class="text-lg font-bold text-slate-900">学内アカウントでサインイン</h2>
                 <p class="text-xs text-slate-500 mt-1">許可されたドメインのメールアドレスのみ利用できます</p>
                 <!-- 許可ドメイン設定 -->
-                <div class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                <div
+                    class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
                     <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
                     <span>許可ドメイン: <strong id="allowedDomainLabel">@your-company.com</strong></span>
                 </div>
             </div>
             <div class="p-6 space-y-4">
                 <!-- エラーメッセージ表示エリア -->
-                <div id="authErrorMsg" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-medium animate-pulse"></div>
+                <div id="authErrorMsg"
+                    class="hidden p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-medium animate-pulse">
+                </div>
 
                 <div>
                     <label class="block text-xs font-medium text-slate-500 mb-1">メールアドレス</label>
-                    <input type="email" id="authEmail" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="user@seiwa.ac.jp">
+                    <input type="email" id="authEmail"
+                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                        placeholder="user@seiwa.ac.jp">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-500 mb-1">このシステムのパスワード（６文字以上）</label>
-                    <input type="password" id="authPassword" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="••••••••">
+                    <input type="password" id="authPassword"
+                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                        placeholder="••••••••">
                     <!-- 💡 パスワードを忘れた場合のリンク（IDを持たせたContainerで囲みました） -->
                     <div id="forgotPasswordLinkContainer" class="text-right mt-2">
-                        <button type="button" onclick="handlePasswordReset()" class="text-xs text-blue-600 hover:underline">
+                        <button type="button" onclick="handlePasswordReset()"
+                            class="text-xs text-blue-600 hover:underline">
                             パスワードをお忘れの方はこちら
                         </button>
                     </div>
@@ -252,25 +275,36 @@
                 <div id="registerFields" class="hidden space-y-4 pt-2 border-t border-slate-100 animate-fadeIn">
                     <div>
                         <label class="block text-xs font-medium text-slate-500 mb-1">所属部署</label>
-                        <input type="text" id="registerDept" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="例: 事務局、英語科">
+                        <input type="text" id="registerDept"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                            placeholder="例: 事務局、英語科">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-500 mb-1">氏名</label>
-                        <input type="text" id="registerName" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="例: 山田 太郎">
+                        <input type="text" id="registerName"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                            placeholder="例: 山田 太郎">
                     </div>
 
                     <!-- 💡 ここにマニュアルのリンクを追加します -->
                     <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
-                       <p class="text-xs text-amber-800 font-medium mb-1.5">登録メールのリンクを押す際の手順や警告画面について</p>
-                       <a href="https://mikamine-office.github.io/user-manual/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition shadow-sm">
-                          <span>📖 図解マニュアル（別タブで開く）</span>
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 2 0 00-2 2v10a2 2 2 0 002 2h10a2 2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                       </a>
+                        <p class="text-xs text-amber-800 font-medium mb-1.5">登録メールのリンクを押す際の手順や警告画面について</p>
+                        <a href="https://mikamine-office.github.io/user-manual/" target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center gap-1 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition shadow-sm">
+                            <span>📖 図解マニュアル（別タブで開く）</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M10 6H6a2 2 2 0 00-2 2v10a2 2 2 0 002 2h10a2 2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14">
+                                </path>
+                            </svg>
+                        </a>
                     </div>
 
                 </div>
 
-                <button id="authPrimaryBtn" class="w-full py-2.5 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition mt-4">
+                <button id="authPrimaryBtn"
+                    class="w-full py-2.5 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition mt-4">
                     ログインする
                 </button>
 
@@ -284,50 +318,57 @@
 
         <!-- 🔒 ログイン時のみ表示するメイングリッド -->
         <div id="appSection" class="hidden flex flex-col gap-6">
-            
+
             <!-- 上部：新規予約の範囲選択フォーム -->
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
-              <h2 class="font-bold text-slate-900 flex items-center gap-2 mb-4">
-                <i data-lucide="plus-circle" class="w-5 h-5 text-blue-500"></i> 新しい予約を登録する
-              </h2>
+                <h2 class="font-bold text-slate-900 flex items-center gap-2 mb-4">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-blue-500"></i> 新しい予約を登録する
+                </h2>
 
-               <!-- ①開始・終了を2列で並べる -->
-               <div class="grid grid-cols-2 gap-4 mb-4">
+                <!-- ①開始・終了を2列で並べる -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 mb-1.5">① 開始時間</label>
-                        <select id="startSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium">
+                        <select id="startSelect"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium">
                             <!-- JSで生成 -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 mb-1.5">② 終了時間</label>
-                        <select id="endSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium">
-                           <!-- JSで生成 -->
+                        <select id="endSelect"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium">
+                            <!-- JSで生成 -->
                         </select>
                     </div>
-               </div>
+                </div>
 
-               <!-- ②備考欄（横幅いっぱい） -->
-              <div class="mb-4">
-                  <label class="block text-xs font-semibold text-slate-500 mb-1.5">③ 備考（来客・打合せ内容など）</label>
-                  <input type="text" id="memoInput" placeholder="表示させたくない場合は、空欄でも構いません" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
-              </div>
-              <div class="mb-4">
-                  <label class="block text-xs font-semibold text-slate-500 mb-1.5">利用希望日</label>
-                  <input type="text" id="reservationDate" placeholder="日付を選択してください" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm cursor-pointer" readonly>
-              </div>
+                <!-- ②備考欄（横幅いっぱい） -->
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">③ 備考（来客・打合せ内容など）</label>
+                    <input type="text" id="memoInput" placeholder="表示させたくない場合は、空欄でも構いません"
+                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">利用希望日</label>
+                    <input type="text" id="reservationDate" placeholder="日付を選択してください"
+                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm cursor-pointer"
+                        readonly>
+                </div>
 
-             <!-- ③予約ボタン -->
-             <button id="submitBookingBtn" class="w-full py-2.5 px-4 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition flex items-center justify-center gap-1.5">
-               <i data-lucide="calendar-plus" class="w-4 h-4"></i>
-               <span id="submitBtnText">この時間帯を予約する</span>
-             </button>
+                <!-- ③予約ボタン -->
+                <button id="submitBookingBtn"
+                    class="w-full py-2.5 px-4 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition flex items-center justify-center gap-1.5">
+                    <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+                    <span id="submitBtnText">この時間帯を予約する</span>
+                </button>
 
-             <!-- 警告メッセージ表示エリア -->
-              <div id="bookingValidationError" class="hidden mt-3 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-medium flex items-center gap-1.5">
-                 <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
-                 <span id="bookingValidationErrorText">エラーテキスト</span>
-              </div>
+                <!-- 警告メッセージ表示エリア -->
+                <div id="bookingValidationError"
+                    class="hidden mt-3 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-medium flex items-center gap-1.5">
+                    <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                    <span id="bookingValidationErrorText">エラーテキスト</span>
+                </div>
             </div>
 
             <!-- 下部メイングリッド：プロフィール ＆ カレンダー -->
@@ -336,7 +377,8 @@
                 <div class="lg:col-span-1 flex flex-col gap-6">
                     <!-- ユーザー設定 -->
                     <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
-                        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <h2
+                            class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                             <i data-lucide="user-check" class="w-4 h-4"></i> ログイン情報
                         </h2>
                         <div class="space-y-4 text-sm">
@@ -351,24 +393,33 @@
 
                             <!-- 🛠️ プロフィール修正機能（異動・改姓に対応するフォーム） -->
                             <div class="pt-3 border-t border-slate-100">
-                                <button onclick="toggleProfileEditForm()" class="text-xs text-blue-500 hover:underline flex items-center gap-1">
+                                <button onclick="toggleProfileEditForm()"
+                                    class="text-xs text-blue-500 hover:underline flex items-center gap-1">
                                     <i data-lucide="user-cog" class="w-3.5 h-3.5"></i> 部署名や氏名の修正はこちら
                                 </button>
-                                <div id="profileEditForm" class="hidden mt-3 space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <div id="profileEditForm"
+                                    class="hidden mt-3 space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
                                     <div>
-                                        <label class="block text-[10px] font-medium text-slate-500 mb-0.5">新しい所属部署</label>
-                                        <input type="text" id="editDept" class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs" placeholder="例: 営業部">
+                                        <label
+                                            class="block text-[10px] font-medium text-slate-500 mb-0.5">新しい所属部署</label>
+                                        <input type="text" id="editDept"
+                                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
+                                            placeholder="例: 営業部">
                                     </div>
                                     <div>
                                         <label class="block text-[10px] font-medium text-slate-500 mb-0.5">新しい氏名</label>
-                                        <input type="text" id="editName" class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs" placeholder="例: 佐藤">
+                                        <input type="text" id="editName"
+                                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
+                                            placeholder="例: 佐藤">
                                     </div>
-                                    <button onclick="saveUserProfile()" class="w-full py-1 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded shadow-sm transition">変更を保存</button>
+                                    <button onclick="saveUserProfile()"
+                                        class="w-full py-1 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded shadow-sm transition">変更を保存</button>
                                 </div>
                             </div>
 
                             <div class="pt-3 border-t border-slate-100">
-                                <button id="logoutBtn" class="w-full py-2 px-4 text-xs font-medium text-red-600 hover:bg-red-50 rounded-xl transition border border-red-200 flex items-center justify-center gap-2">
+                                <button id="logoutBtn"
+                                    class="w-full py-2 px-4 text-xs font-medium text-red-600 hover:bg-red-50 rounded-xl transition border border-red-200 flex items-center justify-center gap-2">
                                     <i data-lucide="log-out" class="w-3.5 h-3.5"></i> ログアウト
                                 </button>
                             </div>
@@ -399,9 +450,11 @@
                 <div class="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                         <h2 class="font-bold text-slate-800 flex items-center gap-2">
-                            <i data-lucide="table-properties" class="w-5 h-5 text-blue-500"></i> 応接室 予約スケジュール (8:00 - 19:00)
+                            <i data-lucide="table-properties" class="w-5 h-5 text-blue-500"></i> 応接室 予約スケジュール (8:00 -
+                            19:00)
                         </h2>
-                        <span id="syncIndicator" class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5">
+                        <span id="syncIndicator"
+                            class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full animate-pulse"></span> 同期中
                         </span>
                     </div>
@@ -428,14 +481,18 @@
     </div>
 
     <!-- 予約登録/削除用のカスタムモーダルダイアログ -->
-    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4 transition-all duration-300">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-100 transform scale-95 transition-all duration-300" id="modalBox">
+    <div id="modalOverlay"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4 transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-100 transform scale-95 transition-all duration-300"
+            id="modalBox">
             <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mb-2">予約を登録しますか？</h3>
             <p id="modalDescription" class="text-sm text-slate-500 mb-6">対象の日時: 2026/06/18 10:00 - 11:00</p>
-            
+
             <div class="flex justify-end gap-3">
-                <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition">キャンセル</button>
-                <button id="modalConfirmBtn" class="px-5 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition">実行</button>
+                <button onclick="closeModal()"
+                    class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition">キャンセル</button>
+                <button id="modalConfirmBtn"
+                    class="px-5 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-xl shadow-sm shadow-blue-500/10 transition">実行</button>
             </div>
         </div>
     </div>
@@ -443,26 +500,26 @@
     <!-- Firebaseおよび内部システム処理 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, getDocs, writeBatch, query, where, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- 1. Firebase 接続設定の優先判定 ---
         const savedCustomConfig = localStorage.getItem('custom_firebase_config');
-        
-        const firebaseConfig = savedCustomConfig 
-            ? JSON.parse(savedCustomConfig) 
-            : (PRODUCTION_FIREBASE_CONFIG.apiKey 
-                ? PRODUCTION_FIREBASE_CONFIG 
-                : (typeof __firebase_config !== 'undefined' 
-                    ? JSON.parse(__firebase_config) 
+
+        const firebaseConfig = savedCustomConfig
+            ? JSON.parse(savedCustomConfig)
+            : (PRODUCTION_FIREBASE_CONFIG.apiKey
+                ? PRODUCTION_FIREBASE_CONFIG
+                : (typeof __firebase_config !== 'undefined'
+                    ? JSON.parse(__firebase_config)
                     : {
-                        apiKey: "", 
+                        apiKey: "",
                         authDomain: "demo-project.firebaseapp.com",
                         projectId: "demo-project",
                         storageBucket: "demo-project.appspot.com",
                         messagingSenderId: "123456",
                         appId: "1:123456:web:123456"
-                      }));
+                    }));
 
         const isDemoMode = !firebaseConfig.apiKey;
 
@@ -522,7 +579,7 @@
 
         const TIME_SLOTS = [];
         for (let i = 0; i < TIME_STEPS.length - 1; i++) {
-            TIME_SLOTS.push(`${TIME_STEPS[i]} - ${TIME_STEPS[i+1]}`);
+            TIME_SLOTS.push(`${TIME_STEPS[i]} - ${TIME_STEPS[i + 1]}`);
         }
 
         let selectedDate = new Date();
@@ -532,7 +589,7 @@
         let isRegisterMode = false;
         let isResetMode = false; // 🌟 新たにパスワードリセットモードの状態管理変数を追加
         // 🌟 ここを追加：外部のカレンダーから日付を直接安全に書き換えるための窓口
-        window.forceUpdateDate = function(newDateObj) {
+        window.forceUpdateDate = function (newDateObj) {
             selectedDate = newDateObj; // 本物の変数を直接上書き！
             updateDateDisplay();       // 画面とスケジュールを同期！
         };
@@ -545,12 +602,12 @@
             return d;
         }
 
-        window.onload = function() {
+        window.onload = function () {
             lucide.createIcons();
             updateDateDisplay();
             setupAuthEventListeners();
             setupConfigPanelValues();
-            setupBookingForm(); 
+            setupBookingForm();
 
             document.getElementById("allowedDomainLabel").textContent = `@${ALLOWED_DOMAIN}`;
             updateModeBanner();
@@ -592,7 +649,7 @@
             if (user) {
                 currentUser = user;
                 document.getElementById("userEmailDisplay").textContent = user.email;
-                
+
                 if (!user.email.endsWith(`@${ALLOWED_DOMAIN}`)) {
                     showAuthError(`許可されていないドメインです。@${ALLOWED_DOMAIN} のみ利用可能です。`);
                     if (isDemoMode) {
@@ -619,7 +676,7 @@
                         // 🌟ローカルストレージではなく、Firestoreの'users'コレクションから直接読み込むように変更！
                         const userDocRef = doc(db, 'common_users', user.uid);
                         const userDocSnap = await getDoc(userDocRef);
-                        
+
                         if (userDocSnap.exists()) {
                             const prof = userDocSnap.data();
                             deptVal = prof.dept;
@@ -662,7 +719,7 @@
             renderScheduleTable();
         }
 
-// --- 4. 認証系ロジック ---
+        // --- 4. 認証系ロジック ---
         function setupAuthEventListeners() {
             const toggleBtn = document.getElementById("toggleAuthModeBtn");
             const authTitle = document.getElementById("authTitle");
@@ -679,12 +736,12 @@
                 if (isResetMode) {
                     isResetMode = false;
                     isRegisterMode = false;
-                    
+
                     authTitle.textContent = "学内アカウントでサインイン";
                     primaryBtn.textContent = "ログインする";
                     toggleBtn.innerHTML = 'この三神峯事務室システムを<span class="text-red-600 font-bold">初めて</span>利用する方（新規登録）';
                     registerFields.classList.add("hidden");
-                    
+
                     if (forgotLinkContainer) forgotLinkContainer.classList.remove("hidden");
                     if (passwordInput && passwordInput.parentElement) {
                         passwordInput.parentElement.classList.remove("hidden"); // パスワード欄を復活
@@ -711,32 +768,32 @@
             };
 
             // 🌟 パスワードリセット画面へ切り替える関数
-        window.handlePasswordReset = function() {
-            isResetMode = true;
-            isRegisterMode = false; // 新規登録モードは強制オフ
-            clearAuthError();
+            window.handlePasswordReset = function () {
+                isResetMode = true;
+                isRegisterMode = false; // 新規登録モードは強制オフ
+                clearAuthError();
 
-            const authTitle = document.getElementById("authTitle");
-            const primaryBtn = document.getElementById("authPrimaryBtn");
-            const toggleBtn = document.getElementById("toggleAuthModeBtn");
-            const registerFields = document.getElementById("registerFields");
-            const forgotLinkContainer = document.getElementById("forgotPasswordLinkContainer");
+                const authTitle = document.getElementById("authTitle");
+                const primaryBtn = document.getElementById("authPrimaryBtn");
+                const toggleBtn = document.getElementById("toggleAuthModeBtn");
+                const registerFields = document.getElementById("registerFields");
+                const forgotLinkContainer = document.getElementById("forgotPasswordLinkContainer");
 
-            // 画面の表示をパスワード再設定用に書き換える
-            if (authTitle) authTitle.textContent = "パスワードの再設定";
-            if (primaryBtn) primaryBtn.textContent = "再設定メールを送信する";
-            if (toggleBtn) toggleBtn.textContent = "ログイン画面に戻る";
-            
-            // 不要な入力欄やリンクを隠す
-            if (registerFields) registerFields.classList.add("hidden");
-            if (forgotLinkContainer) forgotLinkContainer.classList.add("hidden");
+                // 画面の表示をパスワード再設定用に書き換える
+                if (authTitle) authTitle.textContent = "パスワードの再設定";
+                if (primaryBtn) primaryBtn.textContent = "再設定メールを送信する";
+                if (toggleBtn) toggleBtn.textContent = "ログイン画面に戻る";
 
-            // パスワード入力欄自体もリセット時は不要なので隠す
-            const passwordInput = document.getElementById("authPassword");
-            if (passwordInput && passwordInput.parentElement) {
-                passwordInput.parentElement.classList.add("hidden");
-            }
-        };
+                // 不要な入力欄やリンクを隠す
+                if (registerFields) registerFields.classList.add("hidden");
+                if (forgotLinkContainer) forgotLinkContainer.classList.add("hidden");
+
+                // パスワード入力欄自体もリセット時は不要なので隠す
+                const passwordInput = document.getElementById("authPassword");
+                if (passwordInput && passwordInput.parentElement) {
+                    passwordInput.parentElement.classList.add("hidden");
+                }
+            };
 
             primaryBtn.onclick = async () => {
                 const email = document.getElementById("authEmail").value.trim();
@@ -778,7 +835,7 @@
                             const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
                             auth.languageCode = 'ja'; // メール言語を日本語に設定
                             await sendPasswordResetEmail(auth, email);
-                            
+
                             alert(
                                 `【パスワード再設定メールを送信しました】\n\n` +
                                 `${email} 宛に再設定用のリンクを送信しました。\n` +
@@ -819,7 +876,7 @@
                             // 1. Firebase Authenticationでアカウントを作成
                             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                             user = userCredential.user;
-                            
+
                             // 2. ユーザー情報をFirestoreに保存
                             const userDocRef = doc(db, 'common_users', user.uid);
                             await setDoc(userDocRef, {
@@ -835,7 +892,7 @@
                             await sendEmailVerification(user);
                             await signOut(auth);
                         }
-                        
+
                         // 4. モーダルがあれば閉じる
                         if (window.closeModal) window.closeModal();
 
@@ -849,7 +906,7 @@
                                 `リンクをクリックし、Complete verification（検証を完了する）を押してください。\n\n` +
                                 `※リンクをクリックするまで、システムにはログインできません。`
                             );
-                            
+
                             // アラートの「OK」が押された瞬間、裏のモードも見た目も通常ログイン画面に強制固定
                             isRegisterMode = false;
                             if (authTitle) authTitle.textContent = "学内アカウントでサインイン";
@@ -883,7 +940,7 @@
                         } else {
                             // ① 普通にログインを試みる
                             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                            
+
                             // ② ログイン直後にメール認証が済んでいるかチェック！
                             if (window.checkEmailVerificationOnLogin && !window.checkEmailVerificationOnLogin(userCredential.user)) {
                                 return; // 認証がまだなら、ここで処理を終了してメイン画面に進ませない！
@@ -909,12 +966,12 @@
         }
 
         // --- 🛠️ 異動・改姓名に対応するためのプロフィール編集機能 ---
-        window.toggleProfileEditForm = function() {
+        window.toggleProfileEditForm = function () {
             const form = document.getElementById("profileEditForm");
             form.classList.toggle("hidden");
         };
 
-        window.saveUserProfile = async function() {
+        window.saveUserProfile = async function () {
             if (!currentUser) return;
             const newDept = document.getElementById("editDept").value.trim();
             const newName = document.getElementById("editName").value.trim();
@@ -931,7 +988,7 @@
                     handleUserChange(currentUser);
                 } else {
                     // Firestoreのユーザー情報を直接更新
-                     const userDocRef = doc(db, 'common_users', currentUser.uid);
+                    const userDocRef = doc(db, 'common_users', currentUser.uid);
                     await setDoc(userDocRef, {
                         dept: newDept,
                         name: newName,
@@ -940,7 +997,7 @@
                     }, { merge: true });
 
                     alert("プロフィールの更新に成功しました！異動後の所属名・新しいお名前で応接室をご予約いただけます。");
-                    
+
                     // 表示をリロード
                     handleUserChange(currentUser);
                 }
@@ -1001,7 +1058,7 @@
             const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
             const dd = String(selectedDate.getDate()).padStart(2, '0');
             const dayName = WEEKDAYS[selectedDate.getDay()];
-            
+
             display.textContent = `${yyyy}年${mm}月${dd}日 (${dayName})`;
             // 🌟【ここに1行追加】＞ ボタンを押したとき、下の予約フォームの日付も一緒に動かす！
             const formDateInput = document.getElementById("reservationDate");
@@ -1026,11 +1083,11 @@
 
             renderScheduleTable();
             if (currentUser) {
-                updateBookingValidation(); 
+                updateBookingValidation();
             }
         }
 
-        window.changeDate = function(days) {
+        window.changeDate = function (days) {
             const nextDate = new Date(selectedDate);
             nextDate.setDate(nextDate.getDate() + days);
             nextDate.setHours(0, 0, 0, 0);
@@ -1069,7 +1126,7 @@
             function rebuildEndSelect() {
                 const startTime = startSelect.value;
                 const startIndex = TIME_STEPS.indexOf(startTime);
-                
+
                 endSelect.innerHTML = "";
                 for (let i = startIndex + 1; i < TIME_STEPS.length; i++) {
                     const opt = document.createElement("option");
@@ -1096,7 +1153,7 @@
             const endIndex = TIME_STEPS.indexOf(endTime);
             const slots = [];
             for (let i = startIndex; i < endIndex; i++) {
-                slots.push(`${TIME_STEPS[i]} - ${TIME_STEPS[i+1]}`);
+                slots.push(`${TIME_STEPS[i]} - ${TIME_STEPS[i + 1]}`);
             }
             return slots;
         }
@@ -1134,7 +1191,7 @@
             tableRows.forEach(row => {
                 const slot = row.dataset.timeslot;
                 const isBooked = todayBookings.some(b => b.timeSlot === slot);
-                
+
                 if (isBooked) {
                     row.className = "bg-red-100 border-l-4 border-red-600 font-medium text-red-950 transition";
                 } else {
@@ -1253,7 +1310,7 @@
                 const booking = bookingsData.find(b => b.date === dateKey && b.timeSlot === slot);
 
                 const tr = document.createElement("tr");
-                tr.dataset.timeslot = slot; 
+                tr.dataset.timeslot = slot;
 
                 const tdTime = document.createElement("td");
                 tdTime.className = "py-4 px-4 font-bold text-slate-700 text-center border-r border-slate-100 select-none";
@@ -1326,7 +1383,7 @@
         // --- 7. 予約の範囲登録と個別の決定アクション ---
         function confirmBookingRange(date, startTime, endTime) {
             const memo = document.getElementById("memoInput").value;
-            
+
             // 🌟ローカルストレージのフォールバックに加え、Firestoreのデータを基準にしたプロフィール情報を引き出す
             const profileDisplay = document.getElementById("userProfileDisplay").textContent;
             const profileParts = profileDisplay.split(" / ");
@@ -1334,7 +1391,7 @@
                 dept: profileParts[0] || "社員",
                 name: profileParts[1] || "メンバー"
             };
-            
+
             const displayDate = selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
             document.getElementById("modalTitle").textContent = "この時間帯を一括で予約しますか？";
@@ -1347,7 +1404,7 @@
 
             activeModalAction = async () => {
                 const targetSlots = getSelectedSlots(startTime, endTime);
-                const bookingId = "b_" + Date.now(); 
+                const bookingId = "b_" + Date.now();
 
                 try {
                     if (isDemoMode) {
@@ -1355,7 +1412,7 @@
 
                         targetSlots.forEach(slot => {
                             const docId = `${date}_${slot.replace(/[\s:-]/g, "")}`;
-                            bookings = bookings.filter(b => b.id !== docId); 
+                            bookings = bookings.filter(b => b.id !== docId);
                             bookings.push({
                                 id: docId,
                                 bookingId: bookingId,
@@ -1363,7 +1420,7 @@
                                 timeSlot: slot,
                                 dept: myProfile.dept,
                                 user: myProfile.name,
-                                memo: memo, 
+                                memo: memo,
                                 createdUserId: currentUser.uid,
                                 createdAt: new Date().toISOString()
                             });
@@ -1382,7 +1439,7 @@
                                 timeSlot: slot,
                                 dept: myProfile.dept,
                                 user: myProfile.name,
-                                memo: memo, 
+                                memo: memo,
                                 createdUserId: currentUser.uid,
                                 createdAt: new Date().toISOString()
                             });
@@ -1448,12 +1505,12 @@
             }
         }
 
-        window.toggleConfigPanel = function() {
+        window.toggleConfigPanel = function () {
             const panel = document.getElementById("configPanel");
             panel.classList.toggle("hidden");
         };
 
-        window.saveCustomConfig = function() {
+        window.saveCustomConfig = function () {
             const input = document.getElementById("configInput").value.trim();
             if (!input) {
                 alert("設定を入力してください。");
@@ -1469,7 +1526,7 @@
             }
         };
 
-        window.clearCustomConfig = function() {
+        window.clearCustomConfig = function () {
             localStorage.removeItem('custom_firebase_config');
             alert("設定をクリアしました。ローカルデモモードで再起動します！");
             location.reload();
@@ -1486,7 +1543,7 @@
             }, 10);
         }
 
-        window.closeModal = function() {
+        window.closeModal = function () {
             const overlay = document.getElementById("modalOverlay");
             const box = document.getElementById("modalBox");
             box.classList.remove("scale-100");
@@ -1498,7 +1555,7 @@
             }, 150);
         };
 
-        document.getElementById("modalConfirmBtn").onclick = function() {
+        document.getElementById("modalConfirmBtn").onclick = function () {
             if (activeModalAction) {
                 activeModalAction();
             }
@@ -1514,4 +1571,5 @@
         }
     </script>
 </body>
+
 </html>
